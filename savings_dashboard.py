@@ -9,7 +9,7 @@ T2_MICRO_COST = 0.0116
 T2_SMALL_COST = 0.023
 T2_MEDIUM_COST = 0.0464
 WORKING_HOURS_PER_MONTH = 173.2 # Average Monthly Working Hours: 40 hours/week×4.33 weeks/month=173.2 hours/month
-WORKING_HOURS_PER_YEAR = 1,920 # Average Yearly Working Hours: 40 hours/week×52 weeks/year-160 hours off=1,920 hours/year
+WORKING_HOURS_PER_YEAR = 1920 # Average Yearly Working Hours: 40 hours/week×52 weeks/year-160 hours off=1,920 hours/year
 
 st.title("Kardinal Cloud Savings")
 st.header("Replace dev sandboxes with Kardinal - how much $ do you save?")
@@ -41,6 +41,9 @@ with col2:
 with col3:    
     resource_usage_per_service = config_container.selectbox("Average resource requirement per service:",
             (0.0116, 0.023, 0.0464), format_func=cost_per_hour_rendering, index=1)
+    
+cost_time_bucket = config_container.selectbox("Show costs:", ["Monthly", "Yearly"], index=1)
+is_yearly = cost_time_bucket == "Yearly"
 
 def calculate_cost_before(num_engineers, num_services, cost_per_service_hour):
     num_services_before = num_engineers * num_services
@@ -66,8 +69,12 @@ with before_col:
     cost_before = calculate_cost_before(num_engineers, num_services, resource_usage_per_service)
     before_container.metric("Your cost before per hour (stateless services)",
               f"${cost_before:,.2f}")
-    before_container.metric("Your cost before per month (stateless services)",
-              f"${cost_before * WORKING_HOURS_PER_MONTH:,.2f}")
+    if is_yearly:
+        before_container.metric("Your cost before per year (stateless services)",
+              f"${cost_before * WORKING_HOURS_PER_YEAR:,.2f}")
+    else:
+        before_container.metric("Your cost before per month (stateless services)",
+                f"${cost_before * WORKING_HOURS_PER_MONTH:,.2f}")
 
 with after_col:
     after_container = st.container(border=True)
@@ -75,24 +82,45 @@ with after_col:
     cost_after = calculate_cost_kardinal(num_engineers, num_services, resource_usage_per_service)
     after_container.metric("Your cost after per hour (stateless services)",
               f"${cost_after:,.2f}")
-    after_container.metric("Your cost after per month (stateless services)",
-              f"${cost_after * WORKING_HOURS_PER_MONTH:,.2f}")
+    if is_yearly:
+        after_container.metric("Your cost after per year (stateless services)",
+              f"${cost_after * WORKING_HOURS_PER_YEAR:,.2f}")
+    else:
+        after_container.metric("Your cost after per month (stateless services)",
+                f"${cost_after * WORKING_HOURS_PER_MONTH:,.2f}")
 
-# Create Altair bar chart
-data = pd.DataFrame({
-    'Before/After': ['Before', 'After'],
-    'Monthly Cost': [cost_before * WORKING_HOURS_PER_MONTH, cost_after * WORKING_HOURS_PER_MONTH]
-})
+if is_yearly:
+    # Create Altair bar chart
+    data = pd.DataFrame({
+        'Before/After': ['Before', 'After'],
+        'Yearly Cost': [cost_before * WORKING_HOURS_PER_YEAR, cost_after * WORKING_HOURS_PER_YEAR]
+    })
 
-chart = alt.Chart(data).mark_bar().encode(
-    x=alt.X('Before/After', sort=['Before', 'After'], title=None),
-    y=alt.Y('Monthly Cost', title="Monthly Cost ($)"),
-    color=alt.Color('Before/After', legend=None,),
-).properties(
-    width=600,
-    height=400,
-    title=alt.TitleParams(text='Monthly Cost Comparison Before and After Using Kardinal', anchor='middle')
-)
+    chart = alt.Chart(data).mark_bar().encode(
+        x=alt.X('Before/After', sort=['Before', 'After'], title=None),
+        y=alt.Y('Yearly Cost', title="Yearly Cost ($)"),
+        color=alt.Color('Before/After', legend=None,),
+    ).properties(
+        width=600,
+        height=400,
+        title=alt.TitleParams(text='Yearly Cost Comparison Before and After Using Kardinal', anchor='middle')
+    )
+else:
+    # Create Altair bar chart
+    data = pd.DataFrame({
+        'Before/After': ['Before', 'After'],
+        'Monthly Cost': [cost_before * WORKING_HOURS_PER_MONTH, cost_after * WORKING_HOURS_PER_MONTH]
+    })
+
+    chart = alt.Chart(data).mark_bar().encode(
+        x=alt.X('Before/After', sort=['Before', 'After'], title=None),
+        y=alt.Y('Monthly Cost', title="Monthly Cost ($)"),
+        color=alt.Color('Before/After', legend=None,),
+    ).properties(
+        width=600,
+        height=400,
+        title=alt.TitleParams(text='Monthly Cost Comparison Before and After Using Kardinal', anchor='middle')
+    )
 
 st.divider()
 
@@ -107,5 +135,9 @@ percentage_savings = (cost_before - cost_after)/cost_before
 st.metric("You saved (percentage of previous cloud costs):", f"{percentage_savings:,.0%}")
 
 savings_per_hour = calculate_savings(num_engineers, num_services, resource_usage_per_service)
-savings_per_month = savings_per_hour * WORKING_HOURS_PER_MONTH
-st.metric("Cost Saving Per Month, assuming your current dev sandboxes are only up 8hrs/day Mon-Fri.", f"${savings_per_month:,.2f}")
+if is_yearly:
+    savings_per_year = savings_per_hour * WORKING_HOURS_PER_YEAR
+    st.metric("Cost Saving Per Year, assuming your current dev sandboxes are only up 8hrs/day Mon-Fri.", f"${savings_per_year:,.2f}")
+else:
+    savings_per_month = savings_per_hour * WORKING_HOURS_PER_MONTH
+    st.metric("Cost Saving Per Month, assuming your current dev sandboxes are only up 8hrs/day Mon-Fri.", f"${savings_per_month:,.2f}")
