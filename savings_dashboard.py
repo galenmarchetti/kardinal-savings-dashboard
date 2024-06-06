@@ -1,4 +1,6 @@
 import streamlit as st
+import altair as alt
+import pandas as pd
 import streamlit.components.v1 as components
 
 st.set_page_config(layout="wide")
@@ -7,9 +9,10 @@ T2_MICRO_COST = 0.0116
 T2_SMALL_COST = 0.023
 T2_MEDIUM_COST = 0.0464
 WORKING_HOURS_PER_MONTH = 173.2 # Average Monthly Working Hours: 40 hours/week×4.33 weeks/month=173.2 hours/month
+WORKING_HOURS_PER_YEAR = 1,920 # Average Yearly Working Hours: 40 hours/week×52 weeks/year-160 hours off=1,920 hours/year
 
-st.title("Kardinal Cash Saving Dashboard")
-st.header("Replace your Remote Dev Sandboxes")
+st.title("Kardinal Cloud Savings")
+st.header("Replace dev sandboxes with Kardinal - how much $ do you save?")
 
 loom_video_url = "https://www.loom.com/embed/14338fb1ed114e10b7ab2d8f02c3afd6?sid=d6fe2403-9084-4722-9e47-e8d5f0b64ad4"
 
@@ -74,6 +77,26 @@ with after_col:
               f"${cost_after:,.2f}")
     after_container.metric("Your cost after per month (stateless services)",
               f"${cost_after * WORKING_HOURS_PER_MONTH:,.2f}")
+
+# Create Altair bar chart
+data = pd.DataFrame({
+    'Before/After': ['Before', 'After'],
+    'Monthly Cost': [cost_before * WORKING_HOURS_PER_MONTH, cost_after * WORKING_HOURS_PER_MONTH]
+})
+
+chart = alt.Chart(data).mark_bar().encode(
+    x=alt.X('Before/After', sort=['Before', 'After'], title=None),
+    y=alt.Y('Monthly Cost', title="Monthly Cost ($)"),
+    color=alt.Color('Before/After', legend=None,),
+).properties(
+    width=600,
+    height=400,
+    title=alt.TitleParams(text='Monthly Cost Comparison Before and After Using Kardinal', anchor='middle')
+)
+
+st.divider()
+
+st.altair_chart(chart, use_container_width=True)
 
 st.divider()
 
